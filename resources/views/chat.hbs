@@ -1,0 +1,179 @@
+<div class="container">
+    <div class="row mt-4">
+        <div class="col-md-4 col-sm-12 mt-2 mb-2">
+            <div class="userOnlineTable">
+                <div class="header bg-primary text-white p-3" style="font-weight: bold; border-radius: 10px 10px 0px 0px">List Of Users
+                    <button class="btn btn-secondary d-md-none float-right text-white" type="button" data-toggle="collapse" data-target="#userListCollapse" aria-expanded="false" aria-controls="userListCollapse" style="font-weight: bold;">
+                        Open
+                    </button>
+                </div>
+                <div class="content collapse d-md-block" id="userListCollapse" style="background-color: rgb(37, 35, 49);">
+                    <ul class="nav flex-column p-3 list">
+                        
+                    </ul>
+                </div>
+                <div class="footer bg-primary total">Total:</div>
+            </div>
+        </div>
+        <div class="col-md-8 col-sm-12 mt-2 mb-2">
+            <div class="chat-window">
+                <div class="header bg-primary text-right p-3 text-white" style="font-weight: bold;border-radius: 10px 10px 0px 0px; display : flex; justify-content: flex-end; align-items:center">
+                    <div class="hello mr-3">Hello, </div>
+                    <button type="button" class="btn btn-secondary logoutBtn" style="font-weight: bold;">Log out</button>
+                </div>
+                <div class="chat-box">
+
+                </div>
+                <div class="control p-3 d-flex">
+                    <div class="typing d-none" style="padding: 0px 5px;left: 0;background-color: rgb(254, 254, 254);top: -24px;position: absolute;display: flex; border 0 5px 0 0">
+                        <div class="typing-user">
+                            
+                        </div>
+                        <div>
+                            <img src="./typing-texting.gif" alt="" style="height: 20px;">
+                        </div>
+                    </div>
+                    <input type="text" class="form-control mr-2" placeholder="Type your message..." style="background-color: #1E1C26; border: none; outline: none; color: white">
+                    <div>
+                        <button type="button" class="btn btn-primary sendBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-send" viewBox="0 0 16 16">
+  <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
+</svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://blue-box-app-chat-demo6224.onrender.com/socket.io/socket.io.js"></script>
+<script>
+    window.onload = function() {
+        const socket = io("https://blue-box-app-chat-demo6224.onrender.com/chat")
+            let chatBox = document.querySelector('.chat-box')
+            let input = document.querySelector('input')
+            let sendBtn = document.querySelector('.sendBtn')
+            let typing = document.querySelector('.typing')
+            let typingUser = document.querySelector('.typing-user')
+            let focus = false
+            let hello = document.querySelector('.hello')
+            let logoutBtn = document.querySelector('.logoutBtn')
+            let list = document.querySelector('.list')
+            let total = document.querySelector('.total')
+            let user
+
+            input.onfocus = function() {
+                focus = true
+                socket.emit('typing','typing')
+            }
+
+            input.onblur = function() {
+                focus = false
+                socket.emit('typing','stop typing')
+            }
+
+            document.onkeydown = function(e) {
+                if(e.keyCode === 13 && focus) {
+                    e.preventDefault()
+                    sendBtn.click()
+                }
+            }
+
+            sendBtn.onclick = function() {
+                socket.emit('client send data',input.value)
+                input.value = ""
+            }
+
+            logoutBtn.onclick = function() {
+                window.location.href = 'https://blue-box-app-chat-demo6224.onrender.com'
+            }
+
+            socket.on('server send username',function(data) {
+                hello.innerHTML = `Hello,${data}`
+            })
+
+            socket.on('server get infor',function() {
+                const infor = JSON.parse(sessionStorage.getItem('infor'))
+                let newInfor = {
+                        'username' : infor.username,
+                        'visited' : infor.visited + 1
+                    }
+                user = infor.username
+                sessionStorage.setItem('infor', JSON.stringify(newInfor));
+                socket.emit('setInfor', newInfor);
+            })
+
+            socket.on('loadMessages',function(data) {
+                data.forEach(item => {
+                    let html
+                    if(item.type == 'noti') {
+                        html = `<div class="message-notification">
+             <p> <span style="font-weight: bold;">${item.own}</span> <small>${item.data}</small> </p>
+            </div>`
+                    }
+                    else {
+                        if(item.own == user){
+                        html = `<div class="message-container me">
+                        <div class="message-wrapper">
+                            <div class="username">${item.own}:</div>
+                            <div class="message sent">${item.data}</div>
+                        </div>
+                        </div>`
+                        }
+                        else {
+                        html = `<div class="message-container">
+                        <div class="message-wrapper">
+                            <div class="username">${item.own}:</div>
+                            <div class="message received">${item.data}</div>
+                        </div>
+                        </div>`
+                        }
+                    }
+                    chatBox.innerHTML += html
+                })
+            })
+
+            socket.on("server render users",function(data) {
+                list.innerHTML = ""
+                data.forEach(x => {
+                    list.innerHTML += `<li class="nav-item" style="color : white">${x}</li>`
+                })
+                total.innerHTML = `Total: ${data.length} Users online`
+            })
+
+            socket.on('server send typing',function(obj) {
+                if(obj.data == 'typing') {
+                    typing.classList.remove('d-none')
+                    typingUser.innerHTML = `${obj.userName} is typing`
+                }
+                else {
+                    typing.classList.add('d-none')
+                    typingUser.innerHTML = ``
+                }
+            })
+
+            socket.on("server notification", function(data) {
+            chatBox.innerHTML += `<div class="message-notification">
+             <p> <span style="font-weight: bold;">${data.userName}</span> <small>${data.mes}</small> </p>
+            </div>`;
+            });
+
+            socket.on('server send other',function(data) {
+                chatBox.innerHTML += `<div class="message-container">
+                        <div class="message-wrapper">
+                            <div class="username">${data.userName}:</div>
+                            <div class="message received">${data.mes}</div>
+                        </div>
+                    </div>`
+            })
+
+            socket.on('server send me',function(data) {
+                chatBox.innerHTML += `<div class="message-container me">
+                        <div class="message-wrapper">
+                            <div class="username">${data.userName}:</div>
+                            <div class="message sent">${data.mes}</div>
+                        </div>
+                    </div>`
+            })
+}
+</script>

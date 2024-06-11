@@ -1,0 +1,61 @@
+<div class="container">
+    <div class="row" style="justify-content: center; align-items: center; height: 100vh;">
+         <div class="col-4-md col-12-sm p-3" style="background-color: white; height: 70%; width: 60%; border-radius: 5px; display: flex; justify-content: center; flex-direction: column;">
+            <h2 class="mb-4 text-center">Đăng ký</h2>
+            <form id="registerForm" action="./chat" method="post">
+            <div class="form-group">
+                <label for="username" style="font-weight: bold;">Username</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="Nhập tên người dùng">
+                <small id="error" class="form-text" style="color: red; height: 15px;"></small>
+            </div>
+            </form>
+            <button type="button" class="btn btn-primary btn-block registerBtn">Register</button>
+    </div>
+    </div>
+</div>
+<script src="https://blue-box-app-chat-demo6224.onrender.com/socket.io/socket.io.js"></script>
+<script>
+    window.onload = function() {
+        const socket = io("https://blue-box-app-chat-demo6224.onrender.com") 
+        let registerForm = document.querySelector('#registerForm')
+        let username = document.querySelector('#username')
+        let error = document.querySelector("#error")
+        let registerBtn = document.querySelector(".registerBtn")
+
+        registerBtn.onclick = validate
+
+        registerForm.addEventListener('keydown',function(e) {
+            if(e.keyCode == 13) {
+                e.preventDefault()
+                validate()
+            }
+        })
+
+        function validate() {
+            let regex = /^.{4,16}$/;
+            if(!regex.test(username.value)) {
+                error.innerHTML = 'Tên phải dài hơn 4 và ít hơn 16 ký tự'
+                return false
+            }
+            else {
+                error.innerHTML = ''
+                socket.emit('checkUserName',username.value)
+                socket.on('server send checkUserName',function(res) {
+                    if(res == false) {
+                    error.innerHTML = 'tên này đã được người khác sử dụng'
+                    return false
+                    } 
+                    else {
+                    error.innerHTML = ''
+                    sessionStorage.setItem('infor', JSON.stringify({
+                        'username' : username.value,
+                        'visited' : 0
+                    }));
+                    registerForm.submit()
+                    return true
+                }
+            })
+        }
+    }
+}
+</script>
